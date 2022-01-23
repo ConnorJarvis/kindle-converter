@@ -43,9 +43,9 @@ var (
 )
 
 type RecipientResult struct {
-	RecipientEmail   string
-	ApprovedEmails   []string
-	DestinationEmail string
+	RecipientEmail    string
+	ApprovedEmails    []string
+	DestinationEmails []string
 }
 
 type FileToSend struct {
@@ -206,35 +206,37 @@ func handleRequest(ctx context.Context, event events.SNSEvent) error {
 
 		}
 		optimizedEmails := emailOptimizer(filesToSend)
-		for emailIndex := range optimizedEmails {
-			if !(len(optimizedEmails[emailIndex]) > 0) {
-				break
-			}
-			// Create new raw email
-			msg := gomail.NewMessage()
-			msg.SetHeader("From", Sender)
-			msg.SetHeader("To", item.DestinationEmail)
-			msg.SetHeader("Subject", "")
-			msg.SetBody("text/html", "")
-			for _, fileToSend := range optimizedEmails[emailIndex] {
-				// File is attached using local filename but renamed to display filename
-				msg.Attach(fileToSend.LocalFilename, gomail.Rename(fileToSend.DisplayFilename))
-			}
+		for destinationEmailIndex := range item.DestinationEmails {
+			for emailIndex := range optimizedEmails {
+				if !(len(optimizedEmails[emailIndex]) > 0) {
+					break
+				}
+				// Create new raw email
+				msg := gomail.NewMessage()
+				msg.SetHeader("From", Sender)
+				msg.SetHeader("To", item.DestinationEmails[destinationEmailIndex])
+				msg.SetHeader("Subject", "")
+				msg.SetBody("text/html", "")
+				for _, fileToSend := range optimizedEmails[emailIndex] {
+					// File is attached using local filename but renamed to display filename
+					msg.Attach(fileToSend.LocalFilename, gomail.Rename(fileToSend.DisplayFilename))
+				}
 
-			var emailRaw bytes.Buffer
-			msg.WriteTo(&emailRaw)
-			// Prepare raw email
-			input := &ses.SendRawEmailInput{
-				Destinations: []*string{aws.String(item.DestinationEmail)},
-				Source:       aws.String(Sender),
-				RawMessage: &ses.RawMessage{
-					Data: emailRaw.Bytes(),
-				},
-			}
-			// Send email
-			_, err = sesClient.SendRawEmail(input)
-			if err != nil {
-				return handleError(objectKey, bucketName, err)
+				var emailRaw bytes.Buffer
+				msg.WriteTo(&emailRaw)
+				// Prepare raw email
+				input := &ses.SendRawEmailInput{
+					Destinations: []*string{aws.String(item.DestinationEmails[destinationEmailIndex])},
+					Source:       aws.String(Sender),
+					RawMessage: &ses.RawMessage{
+						Data: emailRaw.Bytes(),
+					},
+				}
+				// Send email
+				_, err = sesClient.SendRawEmail(input)
+				if err != nil {
+					return handleError(objectKey, bucketName, err)
+				}
 			}
 		}
 
