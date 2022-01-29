@@ -215,7 +215,7 @@ func handleRequest(ctx context.Context, event events.SNSEvent) error {
 				msg := gomail.NewMessage()
 				msg.SetHeader("From", Sender)
 				msg.SetHeader("To", item.DestinationEmails[destinationEmailIndex])
-				msg.SetHeader("Subject", "")
+				msg.SetHeader("Subject", "Here are your converted files")
 				msg.SetBody("text/html", "")
 				for _, fileToSend := range optimizedEmails[emailIndex] {
 					// File is attached using local filename but renamed to display filename
